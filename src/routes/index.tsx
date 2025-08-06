@@ -1,86 +1,48 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 
-import { useChat, useMessages } from "@/hooks/useChat";
-import { getAvatarColor } from "@/constants";
-
-import type { Message } from "@/collections";
-import Messages from "@/components/messages";
+import ChatArea from "@/components/chat-area";
+import ChatSearch from "@/components/chat-search";
 
 export const Route = createFileRoute("/")({
   component: App,
 });
 
 function App() {
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const { sendMessage } = useChat();
-
-  const messages = useMessages();
-
-  const [message, setMessage] = useState("");
-  const [user, setUser] = useState("Alice");
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  const postMessage = () => {
-    if (message.trim().length) {
-      sendMessage(message, user);
-      setMessage("");
-    }
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      postMessage();
-    }
-  };
+  const [mode, setMode] = useState("chat");
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       <div className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm">
         <h1 className="text-xl font-semibold text-gray-800">Chat Room</h1>
-        <p className="text-sm text-gray-500">Connected as {user}</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
-        <Messages messages={messages} user={user} />
-        <div ref={messagesEndRef} />
-      </div>
-
-      <div className="bg-white border-t border-gray-200 px-4 py-4">
-        <div className="flex items-center space-x-3">
-          <select
-            value={user}
-            onChange={(e) => setUser(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="Alice">Alice</option>
-            <option value="Bob">Bob</option>
-          </select>
-
-          <div className="flex-1 relative">
-            <input
-              type="text"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onKeyDown={handleKeyPress}
-              placeholder="Type a message..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
+      <div className="flex justify-center my-4">
+        <div className="inline-flex rounded-lg bg-gray-200 p-1">
           <button
-            onClick={postMessage}
-            disabled={message.trim() === ""}
-            className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            onClick={() => setMode("chat")}
+            className={`px-6 py-2 rounded-md text-sm font-medium transition-colors duration-150 ${
+              mode === "chat"
+                ? "bg-blue-500 text-white shadow"
+                : "bg-transparent text-gray-700 hover:bg-gray-300"
+            }`}
           >
-            Send
+            Chat
+          </button>
+          <button
+            onClick={() => setMode("search")}
+            className={`px-6 py-2 rounded-md text-sm font-medium transition-colors duration-150 ${
+              mode === "search"
+                ? "bg-blue-500 text-white shadow"
+                : "bg-transparent text-gray-700 hover:bg-gray-300"
+            }`}
+          >
+            Search
           </button>
         </div>
       </div>
+
+      {mode === "chat" ? <ChatArea /> : <ChatSearch />}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useLiveQuery, type Collection } from "@tanstack/react-db";
+import { ilike } from "@tanstack/db";
 
 import { messagesCollection, type Message } from "@/collections";
 
@@ -54,6 +55,21 @@ export function useMessages() {
     q.from({ message: messagesCollection }).select(({ message }) => ({
       ...message,
     }))
+  );
+
+  return messages as Message[];
+}
+
+export function useSearch(term: string) {
+  const { data: messages } = useLiveQuery(
+    (q) =>
+      q
+        .from({ message: messagesCollection })
+        .where(({ message }) => ilike((message as Message).text, `%${term}%`))
+        .select(({ message }) => ({
+          ...message,
+        })),
+    [term]
   );
 
   return messages as Message[];

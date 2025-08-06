@@ -1,40 +1,59 @@
 import { createServerFileRoute } from "@tanstack/react-start/server";
 
-const messages = [
-  {
-    id: 1,
-    user: "Alice",
-    text: "Hello, how are you?",
-  },
-  {
-    id: 2,
-    user: "Bob",
-    text: "I'm fine, thank you!",
-  },
-];
+import { createCollection, localOnlyCollectionOptions } from "@tanstack/db";
+import { z } from "zod";
 
-let subscribers: ((message: any) => void)[] = [];
-const subscribe = (fn: (message: any) => void) => {
-  subscribers.push(fn);
-  return () => {
-    subscribers = subscribers.filter((f) => f !== fn);
-  };
-};
+const IncomingMessageSchema = z.object({
+  user: z.string(),
+  text: z.string(),
+});
 
-const sendMessage = (message: any) => {
-  messages.push(message);
-  subscribers.forEach((fn) => fn(message));
+const MessageSchema = IncomingMessageSchema.extend({
+  id: z.number(),
+});
+
+export type Message = z.infer<typeof MessageSchema>;
+
+export const serverMessagesCollection = createCollection(
+  localOnlyCollectionOptions({
+    getKey: (message) => message.id,
+    schema: MessageSchema,
+  })
+);
+
+let id = 0;
+serverMessagesCollection.insert({
+  id: id++,
+  user: "Alice",
+  text: "Hello, how are you?",
+});
+serverMessagesCollection.insert({
+  id: id++,
+  user: "Bob",
+  text: "I'm fine, thank you!",
+});
+
+const sendMessage = (message: { user: string; text: string }) => {
+  serverMessagesCollection.insert({
+    id: id++,
+    user: message.user,
+    text: message.text,
+  });
 };
 
 export const ServerRoute = createServerFileRoute("/api/chat").methods({
   GET: () => {
     const stream = new ReadableStream({
       start(controller) {
-        for (const message of messages) {
+        for (const [_id, message] of serverMessagesCollection.state) {
           controller.enqueue(JSON.stringify(message) + "\n");
         }
-        subscribe((message) => {
-          controller.enqueue(JSON.stringify(message) + "\n");
+        serverMessagesCollection.subscribeChanges((changes) => {
+          for (const change of changes) {
+            if (change.type === "insert") {
+              controller.enqueue(JSON.stringify(change.value) + "\n");
+            }
+          }
         });
       },
     });
@@ -46,11 +65,10 @@ export const ServerRoute = createServerFileRoute("/api/chat").methods({
     });
   },
   POST: async ({ request }) => {
-    const { text, user } = await request.json();
-    sendMessage({
-      id: messages.length + 1,
-      user,
-      text,
-    });
+    const message = IncomingMessageSchema.safeParse(await request.json());
+    if (!message.success) {
+      return new Response(message.error.message, { status: 400 });
+    }
+    sendMessage(message.data);
   },
 });

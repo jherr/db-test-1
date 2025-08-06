@@ -1,9 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useLiveQuery } from "@tanstack/react-db";
-import { createLiveQueryCollection } from "@tanstack/db";
 
-import { todosCollection } from "@/collections";
+import { messagesCollection } from "@/collections";
 
 export const Route = createFileRoute("/")({
   component: App,
@@ -16,7 +15,7 @@ function App() {
       if (loadedRef.current) return;
       loadedRef.current = true;
 
-      const response = await fetch("/api/demo-names");
+      const response = await fetch("/api/chat");
       const reader = response.body?.getReader();
       if (!reader) {
         return;
@@ -30,7 +29,7 @@ function App() {
           .decode(value, { stream: true })
           .split("\n")
           .filter((chunk) => chunk.length > 0)) {
-          todosCollection.insert(JSON.parse(chunk));
+          messagesCollection.insert(JSON.parse(chunk));
         }
       }
     };
@@ -38,10 +37,37 @@ function App() {
   }, []);
 
   const { data } = useLiveQuery((q) =>
-    q.from({ todo: todosCollection }).select(({ todo }) => ({
-      ...todo,
+    q.from({ message: messagesCollection }).select(({ message }) => ({
+      ...message,
     }))
   );
 
-  return <div>{JSON.stringify(data, null, 2)}</div>;
+  const [message, setMessage] = useState("");
+  const [user, setUser] = useState("Alice");
+
+  return (
+    <div>
+      <div>{JSON.stringify(data, null, 2)}</div>
+      <input
+        type="text"
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+      />
+      <select value={user} onChange={(e) => setUser(e.target.value)}>
+        <option value="Alice">Alice</option>
+        <option value="Bob">Bob</option>
+      </select>
+      <button
+        onClick={() => {
+          fetch("/api/chat", {
+            method: "POST",
+            body: JSON.stringify({ text: message, user }),
+          });
+          setMessage("");
+        }}
+      >
+        Send
+      </button>
+    </div>
+  );
 }

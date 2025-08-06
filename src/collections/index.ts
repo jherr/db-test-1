@@ -4,19 +4,13 @@ import {
 } from "@tanstack/react-db";
 import { z } from "zod";
 
-export const todosCollection = createCollection(
+export const messagesCollection = createCollection(
   localOnlyCollectionOptions({
-    getKey: (todo) => todo.id,
+    getKey: (message) => message.id,
     schema: z.object({
       id: z.number(),
       text: z.string(),
-      finished: z.boolean(),
+      user: z.string(),
     }),
   })
 );
-
-todosCollection.insert({
-  id: 10,
-  text: "foo",
-  finished: false,
-});
